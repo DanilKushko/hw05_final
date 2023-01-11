@@ -1,0 +1,23 @@
+<article>
+  <ul>
+    <li>
+      Автор: {{ post.author.username }}
+      <a href="{% url 'posts:profile' post.author.username %}">все посты пользователя</a>
+    </li>
+    <li>
+      Дата публикации: {{ post.pub_date|date:"d E Y" }}
+    </li>
+  </ul>
+  <p>
+    {{ post.text|linebreaksbr }}
+  </p>
+  {% if is_edit %}
+    <a href="{% url 'posts:post_edit' post.author.username %}">Редактировать</a>
+  {% else %}
+    
+  {% endif %}
+    <a href="{% url 'posts:post_detail' post.pk %}">подробная информация </a>
+</article>  
+{% if post.group and group is None %}    
+  <a href="{% url 'posts:group_list' post.group.slug %}">все записи группы {{post.group.title}}</a>
+{% endif %}  
