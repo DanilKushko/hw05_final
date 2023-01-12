@@ -73,7 +73,9 @@ class PostURLTests(TestCase):
     def test_wrong_uri_returns_404(self):
         """Проверка 404 страницы."""
         response = self.client.get('/posts/test404/')
+        template = 'core/404.html'
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+        self.assertTemplateUsed(response, template)
 
     def test_reddirect_guest_client(self):
         """Проверка редиректа неавторизованного пользователя"""

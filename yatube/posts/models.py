@@ -40,9 +40,9 @@ class Post(models.Model):
         'к которой будет относиться пост'
     )
     image = models.ImageField(
-        'Картинка',
+        help_text='Картинка',
         upload_to='posts/',
-        blank=True
+        blank=True, null=True
     )
 
     def __str__(self):
@@ -76,7 +76,7 @@ class Comment(models.Model):
     )
 
     class Meta:
-        ordering = ["-created"]
+        ordering = ['created']
 
     def __str__(self):
         return self.text
