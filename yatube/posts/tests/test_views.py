@@ -68,11 +68,12 @@ class PaginatorViewsTest(TestCase):
                 )
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class TaskPagesTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.group_test = Group.objects.create(
+        cls.group = Group.objects.create(
             title='test',
             slug='test',
             description='Текстовое описание группы'
@@ -91,9 +92,9 @@ class TaskPagesTests(TestCase):
             content=cls.small_gif,
             content_type="image/gif"
         )
-        cls.post_test = Post.objects.create(
+        cls.post = Post.objects.create(
             text='Тестовый пост контент',
-            group=cls.group_test,
+            group=cls.group,
             author=cls.user,
             image=cls.uploaded
         )
@@ -101,19 +102,19 @@ class TaskPagesTests(TestCase):
         cls.index_url = reverse('posts:index')
         cls.group_list = reverse(
             'posts:group_list',
-            kwargs={'slug': cls.group_test.slug}
+            kwargs={'slug': cls.group.slug}
         )
         cls.profile = reverse(
             'posts:profile',
-            kwargs={'username': cls.post_test.author}
+            kwargs={'username': cls.post.author}
         )
         cls.post_detail_url = reverse(
             'posts:post_detail',
-            kwargs={'post_id': cls.post_test.pk}
+            kwargs={'post_id': cls.post.pk}
         )
         cls.post_edit_url = reverse(
             'posts:post_edit',
-            kwargs={'post_id': cls.post_test.pk}
+            kwargs={'post_id': cls.post.pk}
         )
         cls.post_create_url = reverse('posts:post_create')
         cls.urls = [
@@ -124,6 +125,7 @@ class TaskPagesTests(TestCase):
             (cls.post_edit_url, 'posts/create_post.html'),
             (cls.post_create_url, 'posts/create_post.html'),
         ]
+        cls.follower = User.objects.create(username='Podpishik')
 
     def setUp(self):
         self.guest_client = Client()
@@ -133,6 +135,11 @@ class TaskPagesTests(TestCase):
         self.author_client.force_login(self.author)
         cache.clear()
 
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+
     # тот самый метод, который начинается не с test_**
     def check_post_info(self, context, page=True):
         if page:
@@ -141,11 +148,11 @@ class TaskPagesTests(TestCase):
             post = page_obj[0]
         else:
             post = context.get('post')
-        self.assertIsInstance(self.post_test, Post)
-        self.assertEqual(post.text, self.post_test.text)
-        self.assertEqual(post.author, self.post_test.author)
-        self.assertEqual(post.group, self.post_test.group)
-        self.assertEqual(post.image, self.post_test.image)
+        self.assertIsInstance(self.post, Post)
+        self.assertEqual(post.text, self.post.text)
+        self.assertEqual(post.author, self.post.author)
+        self.assertEqual(post.group, self.post.group)
+        self.assertEqual(post.image, self.post.image)
 
     # Проверяем используемые шаблоны
     def test_pages_uses_correct_template(self):
@@ -164,7 +171,7 @@ class TaskPagesTests(TestCase):
         """Проверка контекста group_list."""
         response = self.authorized_client.get(self.group_list)
         context_group = response.context.get('group')
-        self.assertEqual(context_group, self.group_test)
+        self.assertEqual(context_group, self.group)
         self.check_post_info(response.context)
 
     def test_profile_show_correct_context(self):
@@ -219,12 +226,12 @@ class TaskPagesTests(TestCase):
         """Проверка, что Пост создан на странице с выбранной группой"""
         post_new = Post.objects.create(
             text='Тестовый пост контент',
-            group=self.group_test,
+            group=self.group,
             author=self.user,
         )
         urls_lists = {
             reverse('posts:index'),
-            reverse('posts:group_list', kwargs={'slug': self.group_test.slug}),
+            reverse('posts:group_list', kwargs={'slug': self.group.slug}),
             reverse('posts:profile', kwargs={'username': post_new.author})
         }
         for value in urls_lists:
@@ -239,7 +246,7 @@ class TaskPagesTests(TestCase):
             slug='test_slug_two')
         post_new = Post.objects.create(
             text='Очередной текст',
-            group=self.group_test,
+            group=self.group,
             author=self.user,
         )
         response = self.authorized_client.get(

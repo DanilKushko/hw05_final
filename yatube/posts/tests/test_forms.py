@@ -1,14 +1,19 @@
+import shutil
+import tempfile
 from http import HTTPStatus
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from posts.models import Comment, Group, Post
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 User = get_user_model()
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class TaskCreateFormTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -19,6 +24,11 @@ class TaskCreateFormTests(TestCase):
         self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def test_form_create(self):
         """Валидная форма создает запись в Post."""
@@ -163,39 +173,38 @@ class ComentTest(TestCase):
         )
         self.assertEqual(Comment.objects.count(), comments_count + 1)
         self.assertTrue(
-            Comment.objects.filter(text='Тестовый комментарий').exists()
+            Comment.objects.filter(
+                text=form_data.get('text')
+            ).exists()
         )
 
     def test_guest_comment_cant(self):
         """Проверка, что гостевой пользователь не может добавить
         комментарий.
         """
-        self.post = Post.objects.create(
+        post = Post.objects.create(
             text='Тестовый пост',
             group=self.group,
             author=self.user,
         )
         form_data = {
             'text': 'Снова тестовый комментарий',
-            'post': self.post.pk
         }
         self.guest_client.post(
             reverse(
                 'posts:add_comment',
                 kwargs={
-                    'post_id': self.post.pk
+                    'post_id': post.pk
                 }
             ),
             data=form_data
         )
         response = self.guest_client.post(
-            reverse('posts:add_comment', kwargs={'post_id': self.post.id}),
+            reverse('posts:add_comment', kwargs={'post_id': post.pk}),
             data=form_data
         )
-        # комментарий был создан уже в предыдущем тесте, поэтому 1=1
-        # я так понял)
         self.assertEqual(Comment.objects.count(), 1)
         self.assertRedirects(
             response,
-            '/auth/login/?next=/posts/2/comment/'
+            f'/auth/login/?next=/posts/{post.id}/comment/'
         )

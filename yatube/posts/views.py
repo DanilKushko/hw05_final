@@ -32,9 +32,11 @@ def profile(request, username):
     author = get_object_or_404(User, username=username)
     posts = author.posts.select_related('group', 'author')
     page_obj = paginate_page(request, posts)
-    following = request.user.is_authenticated
-    if following:
-        following = author.following.filter(user=request.user).exists()
+    following = (
+        request.user.is_authenticated
+        and request.user != author
+        and author.following.filter(user=request.user).exists()
+    )
     context = {
         'page_obj': page_obj,
         'author': author,
@@ -44,9 +46,9 @@ def profile(request, username):
 
 
 def post_detail(request, post_id):
-    form = CommentForm(request.POST or None)
-    post = get_object_or_404(Post, pk=post_id)
-    comments = Post.objects.select_related()
+    form = CommentForm()
+    post = get_object_or_404(Post.objects.select_related('author'), pk=post_id)
+    comments = Post.objects.select_related('author')
     context = {
         'post': post,
         'form': form,
@@ -57,7 +59,7 @@ def post_detail(request, post_id):
 
 @login_required
 def post_create(request):
-    form = PostForm(request.POST or None, files=request.FILES)
+    form = PostForm(request.POST or None, files=request.FILES or None)
     if not form.is_valid() or request.method != 'POST':
         return render(request, 'posts/create_post.html',
                       {'form': form, 'is_edit': False})
@@ -83,7 +85,6 @@ def post_edit(request, post_id):
 
 @login_required
 def add_comment(request, post_id):
-    # Получите пост и сохраните его в переменную post.
     post = get_object_or_404(Post, pk=post_id)
     form = CommentForm(request.POST or None)
     if form.is_valid():
@@ -115,6 +116,5 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     author = get_object_or_404(User, username=username)
-    follower = get_object_or_404(Follow, user=request.user, author=author)
-    follower.delete()
+    Follow.objects.filter(user=request.user, author=author).delete()
     return redirect('posts:follow_index')

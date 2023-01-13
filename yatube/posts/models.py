@@ -41,6 +41,7 @@ class Post(models.Model):
     )
     image = models.ImageField(
         help_text='Картинка',
+        verbose_name='Картинка',
         upload_to='posts/',
         blank=True, null=True
     )
